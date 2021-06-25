@@ -3,27 +3,37 @@ package repository
 import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
+	"github.com/sirupsen/logrus"
+	"os"
+	"strconv"
 )
 
-type Config struct {
-	Host     string
-	Port     string
-	Username string
-	Password string
-	DBName   string
-	SSLMode  string
-}
+const usersTable = "users"
 
-func NewPostgresDB(cfg Config) (*sqlx.DB, error) {
-	db, err := sqlx.Open("postgres", fmt.Sprintf("host=%s port=%s user=%s dbname=%s password =%s sslmode=%s",
-		cfg.Host, cfg.Port, cfg.Username, cfg.DBName, cfg.Password, cfg.SSLMode))
+func NewPostgresDB() (*sqlx.DB, error) {
+	dbport, err := strconv.Atoi(os.Getenv("DB_PORT"))
+	if err != nil {
+		logrus.Fatalf("Unable to convert the string into int.  %v", err)
+	}
+
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		os.Getenv("DB_HOST"), dbport, os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_NAME"))
+
+	db, err := sqlx.Open("postgres", psqlInfo)
 
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
+
 	err = db.Ping()
+
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
+
+	logrus.Println("Successfully connected to the database!")
+
 	return db, nil
+
 }
